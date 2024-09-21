@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    devices:
+      - "/dev/video0:/dev/video0"  # Permitir acesso à webcam (Linux)
+    environment:
+      - MODEL_PATH=runs/train/yolov10l_trained/weights/best.pt
+    volumes:
+      - ./runs:/app/runs  # Persistir resultados de treinamento
+    restart: unless-stopped
+  

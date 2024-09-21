@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Detecção de Lixo Aquático em Tempo Real</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+        }
+        .video-container {
+            position: relative;
+            width: 80%;
+            margin: auto;
+            padding-top: 20px;
+        }
+        #video-stream {
+            width: 100%;
+            border: 2px solid #343a40;
+            border-radius: 10px;
+        }
+        .header {
+            text-align: center;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        .metrics {
+            text-align: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="60">
+        <h1>Detecção de Lixo Aquático em Tempo Real</h1>
+        <p>Usando YOLOv10x e Flask</p>
+    </div>
+    <div class="video-container">
+        <img id="video-stream" src="" alt="Video Stream">
+    </div>
+    <div class="metrics">
+        <h4>Objetos Detectados: <span id="object-count">0</span></h4>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script>
+        const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+        const objectCount = document.getElementById('object-count');
+
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor');
+        });
+
+        socket.on('video_frame', (data) => {
+            const img = document.getElementById('video-stream');
+            img.src = 'data:image/jpeg;base64,' + data.frame;
+        });
+
+        socket.on('detection_data', (data) => {
+            objectCount.textContent = data.count;
+        });
+    </script>
+</body>
+</html>

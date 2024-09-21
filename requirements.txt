@@ -1,0 +1,6 @@
+Flask==2.2.5
+Flask-SocketIO==5.3.4
+eventlet==0.33.3
+opencv-python==4.7.0.72
+ultralytics==8.0.102
+PyYAML==6.0
