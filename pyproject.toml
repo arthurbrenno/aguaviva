@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "opencv-python>=4.10.0.84",
+    "pyinstaller>=6.10.0",
     "pyqt5>=5.15.11",
     "ultralytics>=8.2.98",
 ]

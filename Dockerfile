@@ -1,33 +1,56 @@
-# Use uma imagem base oficial do Python
-FROM python:3.9-slim
+# Use uma imagem base do Ubuntu
+FROM ubuntu:20.04
 
-# Defina o diretório de trabalho
-WORKDIR /app
+# Defina variáveis de ambiente para evitar prompts interativos durante a instalação
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Instale as dependências do sistema
+# Atualize os pacotes e instale dependências do sistema
 RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    python3-venv \
     build-essential \
+    libgl1-mesa-glx \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
+    wget \
+    git \
+    curl \
+    supervisor \
+    xfce4 \
+    xfce4-goodies \
+    tigervnc-standalone-server \
+    tigervnc-common \
+    x11vnc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copie os arquivos de requisitos
-COPY requirements.txt .
+# Crie um usuário não root para executar a aplicação
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+# Mude para o usuário criado
+USER docker
+WORKDIR /home/docker
 
 # Instale as dependências Python
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=docker:docker requirements.txt /home/docker/
+RUN python3 -m venv venv && \
+    source venv/bin/activate && \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
-# Copie o restante dos arquivos do aplicativo
-COPY . .
+# Copie o código da aplicação para o contêiner
+COPY --chown=docker:docker . /home/docker/
 
-# Exponha a porta que o Flask usará
-EXPOSE 5000
+# Configure o Supervisor para gerenciar o VNC e a aplicação
+RUN mkdir -p /home/docker/.vnc && \
+    echo "docker" | vncpasswd -f > /home/docker/.vnc/passwd && \
+    chmod 600 /home/docker/.vnc/passwd
 
-# Defina a variável de ambiente para o Flask
-ENV FLASK_APP=app.py
+# Crie o arquivo de configuração do Supervisor
+COPY --chown=docker:docker supervisord.conf /home/docker/supervisord.conf
 
-# Comando para executar o aplicativo
-CMD ["python", "app.py"]
+# Exponha a porta do VNC
+EXPOSE 5901
+
+# Defina o comando de inicialização
+CMD ["/usr/bin/supervisord", "-c", "/home/docker/supervisord.conf"]
