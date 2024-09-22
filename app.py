@@ -14,7 +14,7 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Carregar o modelo treinado YOLOv10x
-MODEL_PATH = os.getenv('MODEL_PATH', 'runs/train/yolov10l_trained/weights/best.pt')
+MODEL_PATH = os.getenv('MODEL_PATH', 'runs/train/large_finetuned/weights/best.pt')
 model = YOLO(MODEL_PATH)
 
 def gen_frames():
