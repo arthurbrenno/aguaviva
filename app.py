@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QPushButton, QFileDialog,
-    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QMessageBox, QComboBox, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout, QFrame, QMessageBox, QComboBox, QSizePolicy, QSpacerItem
 )
 from PyQt5.QtGui import QImage, QPixmap, QFont, QPainter
 from PyQt5.QtCore import Qt, pyqtSignal, QThread, QSize
@@ -16,7 +16,7 @@ class VideoThread(QThread):
     change_pixmap_signal = pyqtSignal(np.ndarray)
     update_count_signal = pyqtSignal(int)
 
-    def __init__(self, video_source=0, model_path='runs/train/yolov10l_trained/weights/best.pt'):
+    def __init__(self, video_source=0, model_path='runs/train/large_finetuned/weights/best.pt'):
         super().__init__()
         self._run_flag = True
         self.video_source = video_source
@@ -96,8 +96,8 @@ class App(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("🦈 Detecção de Lixo Aquático em Tempo Real 🐢")
-        self.setGeometry(100, 100, 1200, 800)  # Tamanho inicial da janela
-        self.setFixedSize(1200, 800)  # Fixar o tamanho da janela para evitar crescimento
+        self.setGeometry(100, 100, 1200, 700)  # Tamanho inicial da janela
+        self.setFixedSize(1200, 700)  # Fixar o tamanho da janela para evitar crescimento
 
         self.setStyleSheet("""
             QMainWindow {
@@ -113,53 +113,26 @@ class App(QMainWindow):
                 border-radius: 10px;
                 padding: 5px;
             }
+            QPushButton {
+                border: none;
+            }
         """)
 
         # Inicializar a variável de vídeo antes de usá-la
-        self.video_source = 'runs/train/yolov10l_trained/weights/exemplo.mp4'  # Atualize para o caminho correto do seu vídeo de teste
-        self.model_path = 'runs/train/yolov10l_trained/weights/best.pt'  # Modelo padrão
+        self.video_source = 'videos/exemplo.mp4'  # Caminho atualizado para o vídeo de teste
+        self.model_path = 'runs/train/large_finetuned/weights/best.pt'  # Modelo padrão
 
         # Central widget
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        # Layout principal
-        self.main_layout = QVBoxLayout()
+        # Layout principal horizontal
+        self.main_layout = QHBoxLayout()
         self.central_widget.setLayout(self.main_layout)
 
-        # Cabeçalho com logotipo e título
-        self.header_layout = QHBoxLayout()
-        self.main_layout.addLayout(self.header_layout)
-
-        # Logotipo
-        self.logo_label = QLabel(self)
-        logo_path = 'assets/logo.png'  # Caminho para o seu logotipo
-        if os.path.exists(logo_path):
-            logo_pixmap = QPixmap(logo_path)
-            logo_pixmap = self.get_circular_pixmap(logo_pixmap, QSize(80, 80))
-            self.logo_label.setPixmap(logo_pixmap)
-        else:
-            self.logo_label.setText("🛠️")  # Emoji substituto caso o logotipo não seja encontrado
-            self.logo_label.setFont(QFont('Arial', 24))
-        self.logo_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.header_layout.addWidget(self.logo_label)
-
-        # Título
-        self.header_title = QLabel("Detecção de Lixo Aquático em Tempo Real 🐠🌊")
-        self.header_title.setFont(QFont('Arial', 24, QFont.Bold))
-        self.header_title.setAlignment(Qt.AlignCenter)
-        self.header_layout.addWidget(self.header_title)
-
-        # Separador
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        separator.setStyleSheet("color: #434C5E;")
-        self.main_layout.addWidget(separator)
-
-        # Container para vídeo e contagem
-        self.video_container = QVBoxLayout()
-        self.main_layout.addLayout(self.video_container)
+        # Seção de Vídeo e Métricas
+        self.video_metrics_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.video_metrics_layout, stretch=8)
 
         # QLabel para exibir o vídeo
         self.label = QLabel(self)
@@ -169,21 +142,21 @@ class App(QMainWindow):
             border-radius: 15px;
             border: 2px solid #81A1C1;
         """)
-        self.label.setFixedSize(800, 600)  # Definir tamanho fixo para o vídeo
-        self.video_container.addWidget(self.label, alignment=Qt.AlignCenter)
+        self.label.setFixedSize(800, 500)  # Definir tamanho fixo para o vídeo
+        self.video_metrics_layout.addWidget(self.label, alignment=Qt.AlignCenter)
 
         # Contagem de objetos detectados
         self.count_label = QLabel("🔍 Objetos Detectados: 0", self)
         self.count_label.setFont(QFont('Arial', 18))
         self.count_label.setAlignment(Qt.AlignCenter)
         self.count_label.setStyleSheet("color: #A3BE8C;")
-        self.video_container.addWidget(self.count_label)
+        self.video_metrics_layout.addWidget(self.count_label)
 
         # Seleção de Modelo
         self.model_selection_layout = QHBoxLayout()
-        self.main_layout.addLayout(self.model_selection_layout)
+        self.video_metrics_layout.addLayout(self.model_selection_layout)
 
-        self.model_label = QLabel("📂 Selecionar Modelo:")
+        self.model_label = QLabel("🛠️ Modelo:")
         self.model_label.setFont(QFont('Arial', 14))
         self.model_selection_layout.addWidget(self.model_label)
 
@@ -201,9 +174,48 @@ class App(QMainWindow):
         self.model_combo.currentIndexChanged.connect(self.change_model)
         self.model_selection_layout.addWidget(self.model_combo)
 
+        # Espaçador para alinhar à esquerda
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.model_selection_layout.addItem(spacer)
+
+        # Status do Modelo e Fonte de Vídeo
+        self.status_label = QLabel(f"📡 Fonte de Vídeo: Nenhuma selecionada\n🛠️ Modelo: {self.get_current_model_name()}", self)
+        self.status_label.setFont(QFont('Arial', 14))
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet("color: #ECEFF4;")
+        self.video_metrics_layout.addWidget(self.status_label)
+
+        # Seção de Botões (Barra Lateral)
+        self.button_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.button_layout, stretch=2)
+
+        # Logotipo e Título na Barra Lateral
+        self.logo_label = QLabel(self)
+        logo_path = 'assets/logo.png'  # Caminho para o seu logotipo
+        if os.path.exists(logo_path):
+            logo_pixmap = QPixmap(logo_path)
+            logo_pixmap = self.get_circular_pixmap(logo_pixmap, QSize(80, 80))
+            self.logo_label.setPixmap(logo_pixmap)
+        else:
+            self.logo_label.setText("🛠️")  # Emoji substituto caso o logotipo não seja encontrado
+            self.logo_label.setFont(QFont('Arial', 24))
+        self.logo_label.setAlignment(Qt.AlignCenter)
+        self.button_layout.addWidget(self.logo_label)
+
+        self.header_title = QLabel("🦈 Aquatic Litter Detection 🐢")
+        self.header_title.setFont(QFont('Arial', 16, QFont.Bold))
+        self.header_title.setAlignment(Qt.AlignCenter)
+        self.button_layout.addWidget(self.header_title)
+
+        # Separador
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setStyleSheet("color: #434C5E;")
+        self.button_layout.addWidget(separator)
+
         # Botões de controle
-        self.button_layout = QHBoxLayout()
-        self.main_layout.addLayout(self.button_layout)
+        self.button_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         # Botão para selecionar vídeo
         self.select_button = QPushButton("📂 Selecionar Vídeo", self)
@@ -213,7 +225,7 @@ class App(QMainWindow):
                 color: #2E3440;
                 padding: 10px 20px;
                 border-radius: 10px;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -231,7 +243,7 @@ class App(QMainWindow):
                 color: #2E3440;
                 padding: 10px 20px;
                 border-radius: 10px;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -249,7 +261,7 @@ class App(QMainWindow):
                 color: #2E3440;
                 padding: 10px 20px;
                 border-radius: 10px;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
             }
             QPushButton:hover {
@@ -259,14 +271,10 @@ class App(QMainWindow):
         self.start_button.clicked.connect(self.toggle_detection)
         self.button_layout.addWidget(self.start_button)
 
-        # Status de vídeo selecionado
-        self.status_label = QLabel(f"📡 Fonte de Vídeo: {self.video_source}", self)
-        self.status_label.setFont(QFont('Arial', 14))
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: #ECEFF4;")
-        self.main_layout.addWidget(self.status_label)
+        # Espaçador no final da barra lateral
+        self.button_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
-        # Inicializar o thread de vídeo
+        # Inicializar o thread de vídeo (não iniciar automaticamente)
         self.thread = None
 
     def get_circular_pixmap(self, pixmap, size):
@@ -303,6 +311,11 @@ class App(QMainWindow):
 
         self.model_combo.addItems(models)
 
+    def get_current_model_name(self):
+        """Retorna o nome do modelo atual."""
+        current_model = self.model_combo.currentText()
+        return current_model if current_model else "modelo padrão"
+
     def change_model(self, index):
         """Atualiza o modelo YOLO com base na seleção do usuário."""
         selected_model = self.model_combo.currentText()
@@ -313,7 +326,7 @@ class App(QMainWindow):
         if self.thread and self.thread.isRunning():
             self.thread.stop()
             self.display_video()  # Reiniciar a captura com o novo modelo
-        self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source}\n🛠️ Modelo: {selected_model}")
+        self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source if self.video_source else 'Nenhuma selecionada'}\n🛠️ Modelo: {selected_model}")
 
     def select_video(self):
         """Abrir diálogo para selecionar um arquivo de vídeo."""
@@ -323,13 +336,13 @@ class App(QMainWindow):
         )
         if file_name:
             self.video_source = file_name
-            self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source}\n🛠️ Modelo: {self.model_combo.currentText()}")
+            self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source}\n🛠️ Modelo: {self.get_current_model_name()}")
             self.display_video()
 
     def use_webcam(self):
         """Definir a fonte de vídeo para a webcam."""
         self.video_source = 0  # Índice padrão da webcam
-        self.status_label.setText("📡 Fonte de Vídeo: Webcam\n🛠️ Modelo: " + self.model_combo.currentText())
+        self.status_label.setText(f"📡 Fonte de Vídeo: Webcam\n🛠️ Modelo: {self.get_current_model_name()}")
         self.display_video()
 
     def display_video(self):
@@ -337,6 +350,11 @@ class App(QMainWindow):
         if self.thread:
             self.thread.stop()
             self.thread = None
+
+        # Verificar se a fonte de vídeo é válida
+        if isinstance(self.video_source, str) and not os.path.exists(self.video_source):
+            QMessageBox.warning(self, "⚠️ Atenção", f"Fonte de vídeo não encontrada: {self.video_source}", QMessageBox.Ok)
+            return
 
         # Criar e iniciar o thread de vídeo sem detecção
         self.thread = VideoThread(video_source=self.video_source, model_path=self.model_path)
@@ -355,14 +373,14 @@ class App(QMainWindow):
             # Iniciar detecção
             self.thread.start_detection()
             self.start_button.setText("🛑 Parar Detecção")
-            self.status_label.setText(f"🔄 Detecção em andamento...\n📡 Fonte de Vídeo: {self.video_source}\n🛠️ Modelo: {self.model_combo.currentText()}")
+            self.status_label.setText(f"🔄 Detecção em andamento...\n📡 Fonte de Vídeo: {self.video_source if self.video_source else 'Nenhuma selecionada'}\n🛠️ Modelo: {self.get_current_model_name()}")
             self.start_button.setStyleSheet("""
                 QPushButton {
                     background-color: #BF616A;
                     color: #2E3440;
                     padding: 10px 20px;
                     border-radius: 10px;
-                    font-size: 16px;
+                    font-size: 14px;
                     font-weight: bold;
                 }
                 QPushButton:hover {
@@ -373,14 +391,14 @@ class App(QMainWindow):
             # Parar detecção
             self.thread.stop_detection()
             self.start_button.setText("🚀 Iniciar Detecção")
-            self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source}\n🛠️ Modelo: {self.model_combo.currentText()}")
+            self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source if self.video_source else 'Nenhuma selecionada'}\n🛠️ Modelo: {self.get_current_model_name()}")
             self.start_button.setStyleSheet("""
                 QPushButton {
                     background-color: #88C0D0;
                     color: #2E3440;
                     padding: 10px 20px;
                     border-radius: 10px;
-                    font-size: 16px;
+                    font-size: 14px;
                     font-weight: bold;
                 }
                 QPushButton:hover {
