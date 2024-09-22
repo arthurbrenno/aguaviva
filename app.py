@@ -1,76 +1,154 @@
+import sys
 import os
 import cv2
 import base64
-from flask import Flask, render_template
-from flask_socketio import SocketIO, emit
+import numpy as np
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QLabel, QPushButton, QFileDialog, QMessageBox
+)
+from PyQt5.QtGui import QImage, QPixmap
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal, QObject, QThread
 from ultralytics import YOLO
-import eventlet
 
-# Use eventlet para suportar WebSockets
-eventlet.monkey_patch()
+class VideoThread(QThread):
+    change_pixmap_signal = pyqtSignal(np.ndarray)
+    update_count_signal = pyqtSignal(int)
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
-socketio = SocketIO(app, cors_allowed_origins="*")
+    def __init__(self, video_source=0, model_path='runs/train/yolov10l_trained/weights/best.pt'):
+        super().__init__()
+        self._run_flag = True
+        self.video_source = video_source
+        self.model_path = model_path
 
-# Carregar o modelo treinado YOLOv10x
-MODEL_PATH = os.getenv('MODEL_PATH', 'runs/train/yolov10l_trained/weights/best.pt')
-model = YOLO(MODEL_PATH)
+    def run(self):
+        # Carregar o modelo YOLO
+        if not os.path.exists(self.model_path):
+            print(f"Modelo YOLO não encontrado em: {self.model_path}")
+            self._run_flag = False
+            return
 
-def gen_frames():
-    """Gera frames processados para transmissão via WebSockets."""
-    cap = cv2.VideoCapture(0)  # 0 para webcam; substitua pelo caminho do vídeo se necessário
+        model = YOLO(self.model_path)
 
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
-        else:
-            # Realizar a detecção
-            results = model(frame)
+        # Inicializar a captura de vídeo
+        cap = cv2.VideoCapture(self.video_source)
+        if not cap.isOpened():
+            print(f"Erro ao abrir a fonte de vídeo: {self.video_source}")
+            self._run_flag = False
+            return
 
-            # Anotar o frame com as detecções
-            annotated_frame = results[0].plot()
+        while self._run_flag:
+            ret, frame = cap.read()
+            if ret:
+                # Realizar a detecção
+                results = model(frame, verbose=False)
 
-            # Contagem de objetos detectados
-            object_count = len(results[0].boxes)
+                # Anotar o frame com as detecções
+                annotated_frame = results[0].plot()
 
-            # Converter o frame para JPEG
-            ret, buffer = cv2.imencode('.jpg', annotated_frame)
-            if not ret:
-                continue
-            frame_bytes = buffer.tobytes()
+                # Contagem de objetos detectados
+                object_count = len(results[0].boxes)
 
-            # Codificar em base64 para transmitir via WebSockets
-            encoded_frame = base64.b64encode(frame_bytes).decode('utf-8')
+                # Emitir sinais para atualizar a interface
+                self.change_pixmap_signal.emit(annotated_frame)
+                self.update_count_signal.emit(object_count)
+            else:
+                # Se for um arquivo de vídeo, reiniciar quando chegar ao fim
+                if isinstance(self.video_source, str):
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                else:
+                    self._run_flag = False
 
-            # Emitir o frame para o frontend
-            socketio.emit('video_frame', {'frame': encoded_frame})
+        # Liberar a captura de vídeo
+        cap.release()
 
-            # Emitir a contagem de objetos
-            socketio.emit('detection_data', {'count': object_count})
+    def stop(self):
+        self._run_flag = False
+        self.wait()
 
-            # Controlar a taxa de transmissão (ajuste conforme necessário)
-            socketio.sleep(0.03)  # Aproximadamente 30 FPS
+class App(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Detecção de Lixo Aquático em Tempo Real")
+        self.setGeometry(100, 100, 800, 600)
 
-    cap.release()
+        # Criar QLabel para exibir o vídeo
+        self.label = QLabel(self)
+        self.label.setGeometry(50, 50, 700, 500)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("border: 2px solid black;")
 
-@app.route('/')
-def index():
-    """Rota principal que serve a página web."""
-    return render_template('index.html')
+        # Criar QLabel para exibir a contagem de objetos
+        self.count_label = QLabel("Objetos Detectados: 0", self)
+        self.count_label.setGeometry(50, 560, 300, 30)
+        self.count_label.setStyleSheet("font-size: 16px;")
 
-@socketio.on('connect')
-def handle_connect():
-    """Evento quando um cliente se conecta."""
-    print('Cliente conectado')
-    socketio.start_background_task(gen_frames)
+        # Botão para selecionar vídeo
+        self.select_button = QPushButton("Selecionar Vídeo", self)
+        self.select_button.setGeometry(400, 560, 150, 30)
+        self.select_button.clicked.connect(self.select_video)
 
-@socketio.on('disconnect')
-def handle_disconnect():
-    """Evento quando um cliente se desconecta."""
-    print('Cliente desconectado')
+        # Botão para iniciar a detecção
+        self.start_button = QPushButton("Iniciar Detecção", self)
+        self.start_button.setGeometry(600, 560, 150, 30)
+        self.start_button.clicked.connect(self.start_detection)
 
-if __name__ == '__main__':
-    # Executar o aplicativo com suporte a WebSockets
-    socketio.run(app, host='0.0.0.0', port=5000)
+        # Variável para armazenar o caminho do vídeo
+        self.video_source = 'exemplo.mp4'  # Padrão: vídeo de teste
+
+        # Inicializar o thread de vídeo
+        self.thread = None
+
+    def select_video(self):
+        # Abrir diálogo para selecionar um arquivo de vídeo
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(
+            self, "Selecionar Arquivo de Vídeo", "", "Arquivos de Vídeo (*.mp4 *.avi *.mov)", options=options
+        )
+        if file_name:
+            self.video_source = file_name
+            QMessageBox.information(self, "Fonte de Vídeo Selecionada", f"Fonte de vídeo: {self.video_source}")
+
+    def start_detection(self):
+        if self.thread and self.thread.isRunning():
+            QMessageBox.warning(self, "Atenção", "Detecção já está em execução.")
+            return
+
+        # Verificar se o arquivo de vídeo existe
+        if isinstance(self.video_source, str) and not os.path.exists(self.video_source):
+            QMessageBox.critical(self, "Erro", f"Arquivo de vídeo não encontrado: {self.video_source}")
+            return
+
+        # Iniciar o thread de vídeo
+        self.thread = VideoThread(video_source=self.video_source)
+        self.thread.change_pixmap_signal.connect(self.update_image)
+        self.thread.update_count_signal.connect(self.update_count)
+        self.thread.start()
+
+    def closeEvent(self, event):
+        if self.thread:
+            self.thread.stop()
+        event.accept()
+
+    def update_image(self, cv_img):
+        """Atualiza a imagem exibida na interface."""
+        qt_img = self.convert_cv_qt(cv_img)
+        self.label.setPixmap(qt_img)
+
+    def update_count(self, count):
+        """Atualiza a contagem de objetos detectados."""
+        self.count_label.setText(f"Objetos Detectados: {count}")
+
+    def convert_cv_qt(self, cv_img):
+        """Converte um frame do OpenCV para QPixmap."""
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        p = convert_to_Qt_format.scaled(self.label.width(), self.label.height(), Qt.KeepAspectRatio)
+        return QPixmap.fromImage(p)
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    a = App()
+    a.show()
+    sys.exit(app.exec_())
