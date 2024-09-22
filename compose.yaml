@@ -1,12 +1,19 @@
 services:
-  web:
+  app:
     build: .
+    container_name: aguaviva
     ports:
-      - "5000:5000"
-    devices:
-      - "/dev/video0:/dev/video0"  # Permitir acesso à webcam (Linux)
-    environment:
-      - MODEL_PATH=runs/train/yolov10l_trained/weights/best.pt
+      - "5901:5901"  # Porta VNC para acessar a interface gráfica
     volumes:
-      - ./runs:/app/runs  # Persistir resultados de treinamento
+      - ./runs/train:/home/docker/runs/train
+      - ./videos:/home/docker/videos
+      - ./assets:/home/docker/assets
     restart: unless-stopped
+    environment:
+      - DISPLAY=:1
+    # Opcional: Definir limites de recursos
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2.0'
+    #       memory: '4G'
