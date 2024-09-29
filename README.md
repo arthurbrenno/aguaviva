@@ -21,3 +21,5 @@ pip install -r requirements.txt
 ```bash
 python app.py
 ```
+
+Ou clique no botao "rodar" no vscode.
