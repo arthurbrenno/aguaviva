@@ -118,9 +118,13 @@ class App(QMainWindow):
             }
         """)
 
-        # Inicializar a variável de vídeo antes de usá-la
-        self.video_source = 'videos/exemplo.mp4'  # Caminho atualizado para o vídeo de teste
-        self.model_path = 'runs/train/large_finetuned/weights/best.pt'  # Modelo padrão
+        # Construir caminho absoluto para o vídeo padrão
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        default_video_path = os.path.join(script_dir, 'videos', 'exemplo.mp4')
+        self.video_source = default_video_path  # Caminho absoluto para o vídeo de teste
+
+        # Construir caminho absoluto para o modelo padrão
+        self.model_path = os.path.join(script_dir, 'runs', 'train', 'large_finetuned', 'weights', 'best.pt')  # Modelo padrão
 
         # Central widget
         self.central_widget = QWidget(self)
@@ -191,7 +195,7 @@ class App(QMainWindow):
 
         # Logotipo e Título na Barra Lateral
         self.logo_label = QLabel(self)
-        logo_path = 'assets/logo.png'  # Caminho para o seu logotipo
+        logo_path = os.path.join(script_dir, 'assets', 'logo.png')  # Caminho absoluto para o seu logotipo
         if os.path.exists(logo_path):
             logo_pixmap = QPixmap(logo_path)
             logo_pixmap = self.get_circular_pixmap(logo_pixmap, QSize(80, 80))
@@ -202,7 +206,7 @@ class App(QMainWindow):
         self.logo_label.setAlignment(Qt.AlignCenter)
         self.button_layout.addWidget(self.logo_label)
 
-        self.header_title = QLabel("🦈 Aquatic Litter Detection 🐢")
+        self.header_title = QLabel("🦈 Projeto Água Viva 🐢")
         self.header_title.setFont(QFont('Arial', 16, QFont.Bold))
         self.header_title.setAlignment(Qt.AlignCenter)
         self.button_layout.addWidget(self.header_title)
@@ -274,8 +278,11 @@ class App(QMainWindow):
         # Espaçador no final da barra lateral
         self.button_layout.addSpacerItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
-        # Inicializar o thread de vídeo (não iniciar automaticamente)
+        # Inicializar o thread de vídeo como None
         self.thread = None
+
+        # Iniciar a reprodução do vídeo padrão automaticamente
+        self.display_video()
 
     def get_circular_pixmap(self, pixmap, size):
         """Retorna um QPixmap circular."""
@@ -299,7 +306,7 @@ class App(QMainWindow):
     def populate_models(self):
         """Popula o QComboBox com os modelos disponíveis."""
         self.model_combo.clear()
-        train_dir = 'runs/train/'
+        train_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'runs', 'train')
         if not os.path.exists(train_dir):
             QMessageBox.warning(self, "⚠️ Atenção", f"Diretório {train_dir} não encontrado.", QMessageBox.Ok)
             return
@@ -319,7 +326,7 @@ class App(QMainWindow):
     def change_model(self, index):
         """Atualiza o modelo YOLO com base na seleção do usuário."""
         selected_model = self.model_combo.currentText()
-        self.model_path = f'runs/train/{selected_model}/weights/best.pt'
+        self.model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'runs', 'train', selected_model, 'weights', 'best.pt')
         if not os.path.exists(self.model_path):
             QMessageBox.warning(self, "⚠️ Atenção", f"Modelo selecionado não encontrado: {self.model_path}", QMessageBox.Ok)
             return
@@ -363,6 +370,11 @@ class App(QMainWindow):
         self.thread.update_count_signal.connect(self.update_count)
         self.thread.start()
 
+        # Atualizar o status para refletir a fonte de vídeo atual
+        fonte = "Webcam" if self.video_source == 0 else self.video_source
+        modelo = self.get_current_model_name()
+        self.status_label.setText(f"📡 Fonte de Vídeo: {fonte}\n🛠️ Modelo: {modelo}")
+
     def toggle_detection(self):
         """Alterna entre iniciar e parar a detecção."""
         if not self.thread:
@@ -391,7 +403,8 @@ class App(QMainWindow):
             # Parar detecção
             self.thread.stop_detection()
             self.start_button.setText("🚀 Iniciar Detecção")
-            self.status_label.setText(f"📡 Fonte de Vídeo: {self.video_source if self.video_source else 'Nenhuma selecionada'}\n🛠️ Modelo: {self.get_current_model_name()}")
+            fonte = "Webcam" if self.video_source == 0 else self.video_source
+            self.status_label.setText(f"📡 Fonte de Vídeo: {fonte}\n🛠️ Modelo: {self.get_current_model_name()}")
             self.start_button.setStyleSheet("""
                 QPushButton {
                     background-color: #88C0D0;
