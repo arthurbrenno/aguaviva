@@ -1,6 +1,4 @@
-### **Testando Sem Docker**
-
-Se preferir testar o aplicativo localmente sem Docker, siga estes passos:
+## Como rodar
 
 #### **Configurando o Ambiente Virtual (Opcional)**
 
