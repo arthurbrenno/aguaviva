@@ -95,7 +95,7 @@ class VideoThread(QThread):
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("🦈 Detecção de Lixo Aquático em Tempo Real 🐢")
+        self.setWindowTitle("Detecção de Lixo Aquático em Tempo Real")
         self.setGeometry(100, 100, 1200, 700)  # Tamanho inicial da janela
         self.setFixedSize(1200, 700)  # Fixar o tamanho da janela para evitar crescimento
 
@@ -206,7 +206,7 @@ class App(QMainWindow):
         self.logo_label.setAlignment(Qt.AlignCenter)
         self.button_layout.addWidget(self.logo_label)
 
-        self.header_title = QLabel("🦈 Projeto Água Viva 🐢")
+        self.header_title = QLabel("Projeto Água Viva 🐢")
         self.header_title.setFont(QFont('Arial', 16, QFont.Bold))
         self.header_title.setAlignment(Qt.AlignCenter)
         self.button_layout.addWidget(self.header_title)
