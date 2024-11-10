@@ -1,3 +1,6 @@
 opencv-python>=4.10.0.84
-ultralytics>=8.2.98
-pyqt5>=5.15.11
+pillow>=10.2.0
+streamlit-webrtc>=0.47.9
+streamlit>=1.40.0
+ultralytics==8.3.28
+watchdog>=5.0.3

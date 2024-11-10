@@ -1,0 +1,1 @@
+Este diretório contém os modelos treinados/finetuned.
