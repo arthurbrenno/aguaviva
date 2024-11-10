@@ -1,6 +1,11 @@
 ## Como rodar
 Antes de explicar, gostaria de dizer que é necessário ter o Python instalado no sistema. De preferencia, python>=3.10;<3.12
 
+```bash
+git clone https://github.com/arthurbrenno/aguaviva.git
+cd aguaviva
+´´´
+
 #### **Instalando as Dependências**
 
 ```bash
