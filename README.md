@@ -4,7 +4,7 @@ Antes de explicar, gostaria de dizer que é necessário ter o Python instalado n
 ```bash
 git clone https://github.com/arthurbrenno/aguaviva.git
 cd aguaviva
-´´´
+```
 
 #### **Instalando as Dependências**
 
